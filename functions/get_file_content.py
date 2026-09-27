@@ -1,11 +1,31 @@
 import os
 from config import MAX_CHARS
 
+schema_get_file_content = {
+    "type": "function",
+    "function": {
+        "name": "get_file_content",
+        "description": "Reads a file with a specified path, relative to the working directory, providing the contents of the file",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Path of the file to read, relative to the working directory (default is the working directory itself)",
+                },
+            },
+        },
+    },
+}
+
+
 def get_file_content(working_directory: str, file_path: str) -> str:
     try:
         working_directory_abs = os.path.abspath(working_directory)
         target_file = os.path.normpath(os.path.join(working_directory_abs, file_path))
-        valid_target_file = working_directory_abs == os.path.commonpath([working_directory_abs, os.path.abspath(target_file)])
+        valid_target_file = working_directory_abs == os.path.commonpath(
+            [working_directory_abs, os.path.abspath(target_file)]
+        )
     except Exception as e:
         return f"Error: failed resolving path - {e}"
 

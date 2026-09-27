@@ -1,7 +1,10 @@
 import os
+import argparse
 from dotenv import load_dotenv
 from openai import OpenAI
-import argparse
+from prompts import system_prompt
+from skills.call_function import available_functions
+from skills import call_function
 
 
 def main():
@@ -14,8 +17,8 @@ def main():
         raise RuntimeError("api key not found")
 
     client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key,
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
     )
 
     parser = argparse.ArgumentParser(description="Mangobot")
@@ -24,12 +27,15 @@ def main():
     args = parser.parse_args()
 
     messages = [
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": args.user_prompt},
     ]
 
     response = client.chat.completions.create(
-        model="openrouter/free",
+        model="qwen3.6:35b-a3b",
         messages=messages,
+        temperature=0,
+        tools=available_functions,
     )
     if response == None:
         raise RuntimeError("failed API request")
@@ -37,9 +43,17 @@ def main():
         print(f"User prompt: {args.user_prompt}")
         print(f"Prompt tokens: {response.usage.prompt_tokens}")
         print(f"Response tokens: {response.usage.completion_tokens}")
-    print("Response:")
-    print(response.choices[0].message.content)
-
+    message = response.choices[0].message
+    if message.tool_calls:
+        for tool_call in message.tool_calls:
+            result_message = call_function.call_function(tool_call, args.verbose)
+            if not result_message["content"]:
+                raise Exception("Error: resulting content of tool call empty")
+            if args.verbose:
+                print(f"-> {result_message['content']}")
+    else:
+        print("Response:")
+        print(message.content)
 
 
 if __name__ == "__main__":
